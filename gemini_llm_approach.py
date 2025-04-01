@@ -139,7 +139,7 @@ available_functions = {
 }
 
 # Retry logic for failed function calls
-MAX_RETRY_ATTEMPTS = 3
+MAX_RETRY_ATTEMPTS = 2
 
 
 async def final_check(call_sid):
@@ -281,7 +281,7 @@ async def generate_response(model: str, call_sid: str):
             return part.text, conversation_history[call_sid]
 
     # ✅ Run final check to retry any errors or failed function calls
-    # await final_check(call_sid)
+    await final_check(call_sid)
                    
 
     # ✅ Generate final response after processing function calls
