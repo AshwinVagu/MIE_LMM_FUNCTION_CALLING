@@ -92,13 +92,15 @@ Response:
 ## Available Functions
 
 Function Name -> Description
+
 get_doctor_details -> Fetches department, specialization, and timings
+
 get_hospital_address -> Provides full address of the hospital
+
 get_hospital_timings -> Returns weekly operating hours
 
 ## Environment Variables
 
-Variable -> Description
 GEMINI_API_KEY -> (Required for Gemini approach to call Gemini API)
 
 
@@ -110,6 +112,11 @@ GEMINI_API_KEY -> (Required for Gemini approach to call Gemini API)
 ## NOTE:
 This project can be used along with the Twilio IVR project in this link :- 
 https://github.com/AshwinVagu/MIE_NATIVE_TWILIO_IVR
+
+## Video Demos:
+
+- Video for demo on Ollama function calling approach: https://youtu.be/98IzzWJxD0Q
+- Short for demo on IVR integration with this(uses Gemini API): https://www.youtube.com/shorts/YvWgXNYg6OY
 
 ## Workflow for this function calling:
 
