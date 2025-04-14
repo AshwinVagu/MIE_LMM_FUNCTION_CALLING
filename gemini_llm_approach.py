@@ -6,6 +6,16 @@ from flask import Flask, request, jsonify
 from google import genai
 from google.genai import types
 import json
+import firebase_admin
+from firebase_admin import credentials, firestore
+from datetime import datetime
+
+# Initialize Firebase (do this once)
+if not firebase_admin._apps:
+    cred = credentials.Certificate("firebase_key.json")  # Replace with your actual path
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
 
 app = Flask(__name__)
 
@@ -26,6 +36,41 @@ doctors = [
     {"name": "John Smith", "department": "Pediatrics", "specialization": "Child Care",
      "timings": "Monday to Friday, 11:00 am to 1:00 pm"}
 ]
+
+
+# Function to handle prescription refill
+def request_prescription_refill(patient_name, doctor_name, medicine, dosage):
+    try:
+        doctor_info = get_doctor_details(doctor_name)
+        if "error" in doctor_info or "multiple_matches" in doctor_info:
+            return {
+                "error": "Doctor not found or multiple matches. Please provide the full doctor name."
+            }
+
+        now = datetime.utcnow()
+        refill_data = {
+            "patient_name": patient_name,
+            "medicine_name": medicine,
+            "dosage": dosage,
+            "doctor_name": doctor_info["name"],
+            "status": "order_confirmed",
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        }
+
+        # Add to Firestore
+        doc_ref = db.collection("prescription_refill_requests").add(refill_data)
+        print(f"Added document with ID: {doc_ref[1].id}")
+        doc_id = doc_ref[1].id  
+
+        return {
+            "confirmation": f"Prescription refill recorded for patient {patient_name} with prescription ID {doc_id}.",
+            "prescription_id": doc_id,
+            "details": refill_data
+        }
+    except Exception as e:
+        print(f"Error: {str(e)}")
+
 
 
 # Function to return hospital timings
@@ -73,6 +118,7 @@ system_prompt = types.Content(
             text="""You are an intelligent IVR assistant for a hospital. 
                  Answer politely and professionally. Use provided functions for hospital timings, address details, or doctor information when needed. 
                  If multiple doctors match the name provided, ask the user to specify the full name.
+                 If a prescription refill request has been placed successfully and the request data is given as input, tell the user that it has been successfully places and give the user the prescription_id of the request.
                  Finally answer anything again if the user asks a question again."""
         )
     ]
@@ -125,7 +171,34 @@ functions = [
             },
             "required": ["name"]
         }
+    },
+    {
+        "name": "request_prescription_refill",
+        "description": "Handles a prescription refill request after verifying the doctor.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "patient_name": {
+                    "type": "string",
+                    "description": "Full name of the patient"
+                },
+                "doctor_name": {
+                    "type": "string",
+                    "description": "Full name of the prescribing doctor"
+                },
+                "medicine": {
+                    "type": "string",
+                    "description": "Name of the medicine requested"
+                },
+                "dosage": {
+                    "type": "string",
+                    "description": "Dosage amount"
+                }
+            },
+            "required": ["patient_name", "doctor_name", "medicine", "dosage"]
+        }
     }
+
 ]
 
 tools = types.Tool(function_declarations=functions)
@@ -136,6 +209,7 @@ available_functions = {
     "get_hospital_timings": get_hospital_timings,
     "get_hospital_address": get_hospital_address,
     "get_doctor_details": get_doctor_details,
+    "request_prescription_refill": request_prescription_refill,
 }
 
 # Retry logic for failed function calls
