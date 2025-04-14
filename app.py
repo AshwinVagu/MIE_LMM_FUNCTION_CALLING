@@ -44,6 +44,23 @@ def get_hospital_address():
         "country": "USA"
     })
 
+# Function to handle prescription refill requests
+def refill_prescription(doctor_name, medication_name, quantity, patient_name):
+    doctor_name_lower = doctor_name.lower()
+    matched_doctor = next((doc for doc in doctors if doctor_name_lower in doc["name"].lower()), None)
+
+    if not matched_doctor:
+        return json.dumps({"error": "Doctor not found. Please provide a valid doctor name."})
+
+    # In a real system, we'd store or process this request
+    return json.dumps({
+        "status": "success",
+        "message": f"Prescription refill request submitted for {patient_name}.",
+        "doctor": matched_doctor["name"],
+        "medication": medication_name,
+        "quantity": quantity
+    })
+
 # Function to return doctor details
 def get_doctor_details(name):
     query_name = name.lower()
@@ -63,6 +80,7 @@ system_prompt = {
         "You are an intelligent IVR assistant for a hospital. Answer politely and professionally. "
         "Use provided functions for hospital timings, address details, or doctor information when needed. "
         "If multiple doctors match the name provided, ask the user to specify the full name."
+        "Exactly request the correct parameters for the function call if required, do not make up any parameters. follow the tools properly."
     )
 }
 
@@ -78,6 +96,7 @@ async def final_check(call_sid):
         "get_hospital_timings": get_hospital_timings,
         "get_hospital_address": get_hospital_address,
         "get_doctor_details": get_doctor_details,
+        "refill_prescription": refill_prescription,
     }
 
     # Identify and store failed tool calls before removing them
@@ -161,7 +180,21 @@ async def generate_response(model: str, call_sid: str):
                                               "description": "Provides details of a specified doctor",
                                               "parameters": {"type": "object", "properties": {"name": {
                                                   "type": "string", "description": "Doctor's name"}}},
-                                              "required": ["name"]}}
+                                              "required": ["name"]}},
+            {"type": "function", "function": {
+                "name": "refill_prescription",
+                "description": "Handles prescription refill requests by verifying doctor and processing the refill.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "doctor_name": {"type": "string", "description": "Name of the prescribing doctor"},
+                        "medication_name": {"type": "string", "description": "Name of the medication"},
+                        "quantity": {"type": "string", "description": "Amount of medication requested"},
+                        "patient_name": {"type": "string", "description": "Name of the patient"}
+                    },
+                    "required": ["doctor_name", "medication_name", "quantity", "patient_name"]
+                }
+            }}
         ],
     )
 
